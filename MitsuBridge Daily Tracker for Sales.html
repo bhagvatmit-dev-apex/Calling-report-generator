@@ -1,0 +1,752 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>MitsuBridge Daily Tracker for Sales</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column; mode bar, number tiles, calls-per-day + disposition charts, by-sheet table, remarks */
+:root{
+  --bg:#f6f7fb; --surface:#ffffff; --fg:#1b2133; --muted:#5d6579; --line:#e1e4ee;
+  --accent:#2f54c9; --warn:#b5590f; --warn-soft:#f6dcc4; --info-soft:#e3e9fb;
+  --d-callback:#c9871a; --d-int:#2f54c9; --d-notint:#8a90a3; --d-enr:#1f8a55; --d-wrong:#c23b3b; --d-none:#e4e7ef;
+  --display:"Fraunces",Georgia,serif; --body:"IBM Plex Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151f; --surface:#1b2030; --fg:#e7e9f2; --muted:#9aa1b6; --line:#2c3347;
+  --accent:#7d9bff; --warn:#f0a35e; --warn-soft:#5a3a1e; --info-soft:#26304f;
+  --d-callback:#e0a63e; --d-int:#7d9bff; --d-notint:#7b8196; --d-enr:#4cc287; --d-wrong:#ee6b6b; --d-none:#2a3044; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151f; --surface:#1b2030; --fg:#e7e9f2; --muted:#9aa1b6; --line:#2c3347;
+  --accent:#7d9bff; --warn:#f0a35e; --warn-soft:#5a3a1e; --info-soft:#26304f;
+  --d-callback:#e0a63e; --d-int:#7d9bff; --d-notint:#7b8196; --d-enr:#4cc287; --d-wrong:#ee6b6b; --d-none:#2a3044; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding-block:32px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:20px}
+header{display:grid;gap:4px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(26px,4vw,34px);margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:0}
+h2{font-size:15px;font-weight:600;margin:0}
+.mode{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;
+  background:var(--info-soft);border-radius:10px;padding:12px 16px;font-size:14px}
+.mode.example{background:var(--warn-soft)}
+.mode .btns{display:flex;gap:8px;flex-wrap:wrap}
+button,.filebtn{font:inherit;font-size:13px;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--fg);
+  border-radius:7px;padding:6px 12px;cursor:pointer}
+button:hover,.filebtn:hover{border-color:var(--accent)}
+button.danger{background:var(--d-wrong);border-color:var(--d-wrong);color:#fff}
+button:focus-visible,.filebtn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.filebtn input{position:absolute;opacity:0;width:1px;height:1px}
+.upload-menu{position:relative}
+.upload-options{position:absolute;z-index:5;top:calc(100% + 5px);right:0;min-width:190px;display:grid;gap:8px;padding:9px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px #0002}
+.upload-options .filebtn{text-align:center}
+textarea{box-sizing:border-box;width:100%;resize:vertical;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:9px}
+input[type=url]{box-sizing:border-box;width:100%;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:9px}
+.err{color:var(--d-wrong);font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:2px}
+.tile .n{font-family:var(--display);font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.tile .l{font-size:13px;color:var(--muted)}
+.charts{display:grid;grid-template-columns:3fr 2fr;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px;align-content:start;min-width:0}
+.legend{display:flex;gap:6px 14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.days{display:flex;align-items:flex-end;gap:6px;height:190px;border-bottom:1px solid var(--line);overflow-x:auto;padding-top:18px}
+.day{flex:1 0 34px;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;gap:4px}
+.day .tot{font-size:12px;font-variant-numeric:tabular-nums;color:var(--fg);font-weight:600}
+.day .stack{width:70%;max-width:40px;display:flex;flex-direction:column-reverse;border-radius:3px 3px 0 0;overflow:hidden}
+.daylabels{display:flex;gap:6px;overflow:hidden}
+.daylabels span{flex:1 0 34px;text-align:center;font-size:11px;color:var(--muted);line-height:1.3}
+.daylabels b{display:block;color:var(--fg);font-weight:600;margin-top:2px}
+.bars{display:grid;gap:9px}
+.row{display:grid;grid-template-columns:118px 1fr 40px;gap:10px;align-items:center;font-size:13px}
+.row .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.track{height:14px;display:flex;border-radius:3px;overflow:hidden}
+.note{font-size:13px;color:var(--muted);margin:0}
+.empty{display:grid;place-items:center;height:190px;text-align:center;color:var(--muted);font-size:14px;padding:0 16px;border:1px dashed var(--line);border-radius:8px}
+.tablebox{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.mini{width:150px}
+td.mini .track{height:10px;background:var(--d-none)}
+tfoot td{font-weight:600}
+.zero{color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button[aria-selected="true"]{border-color:var(--fg);background:var(--fg);color:var(--bg)}
+.tabs button i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.people{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.people table{min-width:720px}
+.people thead th{position:sticky;top:0;background:var(--surface)}
+.people td.ph{font-variant-numeric:tabular-nums;white-space:nowrap}
+.people td.rm{max-width:280px;overflow-wrap:anywhere}
+.row.pick{cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px}
+.row.pick:hover,.row.pick:focus-visible{background:var(--info-soft);outline:none}
+.row.pick.on{background:var(--info-soft);font-weight:600}
+.copy{font-size:12px;padding:2px 8px;margin-left:6px}
+footer{font-size:12px;color:var(--muted)}
+[hidden]{display:none!important}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:760px){.charts{grid-template-columns:1fr}}
+@media (max-width:480px){.tiles{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:96px 1fr 34px}}
+</style>
+
+<div class="wrap" id="page">
+  <header>
+    <h1>MitsuBridge Daily Tracker for Sales</h1>
+    <p class="sub">Calls, dispositions and follow-ups across all college lists</p>
+  </header>
+
+  <section class="mode" id="mode" aria-live="polite">
+    <span id="modeText"></span>
+    <span class="btns">
+        <button type="button" id="refreshBtn">Refresh Google Sheets</button>
+        <span class="upload-menu" id="uploadMenu">
+          <button type="button" id="uploadMenuBtn" aria-expanded="false" aria-controls="uploadOptions">Upload sheets ▾</button>
+          <span class="upload-options" id="uploadOptions" hidden>
+            <label class="filebtn" id="uploadBtn">Upload Excel/CSV files<input type="file" id="file" accept=".xlsx,.xls,.csv" multiple></label>
+            <button type="button" id="urlOptionBtn">Add Google Sheet URL</button>
+          </span>
+        </span>
+        <button type="button" id="snapBtn" hidden>Save snapshot (image)</button>
+        <button type="button" id="clearBtn" hidden>Clear data</button>
+        <span id="confirmBox" hidden>Remove all uploaded data for everyone? <button type="button" id="clearYes" class="danger">Yes, clear</button> <button type="button" id="clearNo">Cancel</button></span>
+      </span>
+      <span class="err" id="err" hidden></span>
+    </section>
+
+    <section class="panel" id="sourcesPanel" hidden>
+      <h2>Google Sheets sources</h2>
+      <p class="note">Add one Google Sheets link per spreadsheet. If full-workbook downloads are blocked, deploy <b>MitsuBridge Sheets Bridge.gs</b> as a web app that executes as you and is available to anyone, then paste its /exec URL below. The bridge allowlists the three default spreadsheet IDs; add any additional IDs to its ALLOWED_SPREADSHEET_IDS set before deploying. The deploying account must have access to each source spreadsheet. Without the connector, each source needs link-view access. Save the connector URL in this browser; it is not included when sharing the HTML file.</p>
+      <textarea id="sheetUrls" rows="4" aria-label="Google Sheets URLs"></textarea>
+      <label class="note" for="proxyUrl">Apps Script connector URL (optional)</label>
+      <input type="url" id="proxyUrl" placeholder="https://script.google.com/macros/s/.../exec" aria-label="Apps Script connector URL">
+      <div class="btns"><button type="button" id="saveSourcesBtn">Save sheet URLs</button><span class="note" id="sourceNote"></span></div>
+    </section>
+
+    <div id="dash" hidden style="display:grid;gap:20px">
+    <p class="note" id="reportNote"></p>
+    <div id="overallView" style="display:grid;gap:20px">
+    <section class="tiles" aria-label="Headline numbers" id="tiles"></section>
+
+  <section class="charts">
+    <div class="panel">
+      <h2>Calls and leads engaged each day</h2>
+      <div class="legend" id="legend1"></div>
+      <div id="daily"></div>
+      <p class="note" id="dailyNote" hidden></p>
+    </div>
+    <div class="panel">
+      <h2>Dispositions so far</h2>
+      <div class="bars" id="disps"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Dispositions by sheet</h2>
+    <div class="tablebox"><table>
+      <thead><tr><th>Sheet</th><th class="num">Students</th><th class="num">Called</th><th class="num">Previous Data (today)</th><th class="num">Call back</th><th class="num">Interested</th><th class="num">Not int.</th><th class="num">Enrolled</th><th class="num">Wrong no.</th><th class="num">To call</th><th>Progress</th></tr></thead>
+      <tbody id="tbl"></tbody><tfoot id="tfoot"></tfoot>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <h2>Calls by counselor</h2>
+    <div class="tablebox"><table>
+      <thead><tr><th>Counselor</th><th class="num">Calls</th><th class="num">Engaged</th><th class="num" id="cLatestH">Latest day</th><th class="num">Call back</th><th class="num">Interested</th><th class="num">Not int.</th><th class="num">Enrolled</th><th class="num">Wrong no.</th></tr></thead>
+      <tbody id="ctbl"></tbody>
+    </table></div>
+    <p class="note" id="cNote" hidden>No counselor names found. Add a <b>Counselor</b> column to the sheets and fill in who made each call.</p>
+  </section>
+
+  <section class="panel" id="historyPanel" hidden>
+    <h2>Disposition change history</h2>
+    <p class="note">Exact timestamps are available for changes recorded by the logger and use the source spreadsheet's timezone.</p>
+    <div class="tablebox"><table>
+      <thead><tr><th>Student</th><th>Contact</th><th>Sheet</th><th>Old disposition</th><th>New disposition</th><th>Changed at</th><th>Previous data</th></tr></thead>
+      <tbody id="historyRows"></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" id="studentsSec">
+    <h2 id="peopleH">Students by disposition</h2>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <p class="note" id="peopleNote" hidden></p>
+    <div class="people"><table>
+      <thead><tr id="peopleHead"><th>Name</th><th>Contact</th><th>Class</th><th>Sheet</th><th>Call date</th><th>Remark</th></tr></thead>
+      <tbody id="people"></tbody>
+    </table></div>
+  </section>
+
+  </div>
+  </div>
+  <footer>Today's calls and the <b>Previous Data</b> counts below come from disposition changes logged today. An engaged lead is any disposition except Wrong number. Lead creation dates use each sheet's created-time field where available. Student names and phone numbers are shown only to the person who uploaded the sheets.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+const D=[
+  {k:"Call back",c:"--d-callback"},{k:"Interested",c:"--d-int"},{k:"Not interested",c:"--d-notint"},
+  {k:"Enrolled",c:"--d-enr"},{k:"Wrong number",c:"--d-wrong"}];
+const NONE="Not called yet";
+const DEFAULT_URLS=[
+  "https://docs.google.com/spreadsheets/d/1fmcxmeOpeYgqfs92djrLSKdOuAe98PMMy5HRLMUkwp4/edit?usp=sharing",
+  "https://docs.google.com/spreadsheets/d/1nHfD5zLLbDbys-Ei_ut2kP1oRf0xb0hYl6hB_ZwzQ0M/edit?usp=sharing",
+  "https://docs.google.com/spreadsheets/d/1X4ZMrs29baR5zU-y6MgudLHdENZOCBIOsIE3mANvtDk/edit?usp=sharing"
+];
+const DASHBOARD_PROXY_URL=""; // Set to the deployed /exec URL before sharing the HTML.
+const LISTS=[["Group A",41],["Group C",40],["Degree List 1",39],["General List",36],["Degree List 2",34],
+  ["Mauli College 2",33],["SSGMCE MBA",33],["Mauli College 1",31],["Group B",25],["Group D",4]];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const col=k=>`var(${(D.find(d=>d.k===k)||{c:"--d-none"}).c})`;
+const dispositionField=row=>Object.keys(row).find(k=>/^disposition$/i.test(k.trim()))
+  ||Object.keys(row).find(k=>/disposition|status/i.test(k));
+
+function normDisp(d){const clean=String(d??"").replace(/[\u200B-\u200D\uFEFF]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+  if(!clean)return NONE; if(clean.startsWith("enrol"))return "Enrolled"; if(/not\s*int/.test(clean))
+    return "Not interested";
+  if(/int[e]?r?e?st/.test(clean))return "Interested"; if(/call\s*back|callback/.test(clean))return "Call back";
+  if(/wrong|invalid/.test(clean))return "Wrong number"; return "Call back";}
+const scrub=t=>String(t??"").replace(/(\+?\d[\d\s-]{8,}\d)/g,"[number]").trim();
+const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function parseDate(v){
+  if(v==null||v==="")return null;
+  if(v instanceof Date&&!isNaN(v))return ymd(v);
+  if(typeof v==="number"&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return ymd(new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));}
+  const s=String(v).trim();let m;
+  if(m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))return ymd(new Date(+m[1],m[2]-1,+m[3]));
+  if(m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/)){const y=m[3].length===2?2000+ +m[3]:+m[3];return ymd(new Date(y,m[2]-1,+m[1]));}
+  if(m=s.match(/^(\d{1,2})[\s-]*([a-z]{3})[a-z]*[\s,-]*(\d{4})?/i)){const mo=MON[m[2].toLowerCase()];if(mo)return ymd(new Date(m[3]?+m[3]:new Date().getFullYear(),mo-1,+m[1]));}
+  return null;}
+const pick=(row,re)=>{for(const k of Object.keys(row))if(re.test(k))return row[k];};
+const leadCreatedField=row=>Object.keys(row).find(k=>/^created[_\s]*time$/i.test(k.trim()))
+  ||Object.keys(row).find(k=>/created[_\s]*date|lead[_\s]*date|enquiry[_\s]*date/i.test(k));
+const callDateField=row=>Object.keys(row).find(k=>/call[\s_]*date|date[\s_]*of[\s_]*call|date[\s_]*called|called[\s_]*on/i.test(k))
+  ||Object.keys(row).find(k=>/^date$/i.test(k.trim()))
+  ||Object.keys(row).find(k=>/date/i.test(k)&&!/created|lead|entry|remark/i.test(k));
+
+// A short one-way code for name + mobile, used only to spot the same student across files.
+function keyOf(name,mobile){
+  const n=String(name??"").toLowerCase().replace(/[^a-z]/g,""),m=String(mobile??"").replace(/\D/g,"").slice(-10);
+  if(!n&&!m)return "";let h=2166136261;for(const c of n+"|"+m){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(36);}
+function mergeHistory(...histories){
+  const events=new Map();
+  for(const event of histories.flat()){
+    const id=`${event.timestamp||event.date}|${event.disp}|${event.oldDisp||""}|${event.type||""}`;
+    events.set(id,event);
+  }
+  return [...events.values()].sort((a,b)=>(a.timestamp||"").localeCompare(b.timestamp||""));
+}
+// Combine several files: the same student keeps the most recent call (a filled disposition beats an empty one).
+function merge(sets){
+  const out=[],at=new Map();
+  for(const r of sets.flatMap(s=>s.recs)){
+    if(!r.key){out.push(r);continue;}
+    const i=at.get(r.key);
+    if(i===undefined){at.set(r.key,out.length);out.push(r);continue;}
+    const o=out[i],rc=r.disp!==NONE,oc=o.disp!==NONE;
+    const chosen=(rc&&!oc)||(rc&&oc&&(r.date||"")>=(o.date||""))?r:o;
+    out[i]={...chosen,remark:r.remark||o.remark,leadDate:chosen.leadDate||o.leadDate||r.leadDate,
+      callHistory:mergeHistory(o.callHistory||[],r.callHistory||[]),
+      addedDate:o.addedDate||r.addedDate,auditTracked:o.auditTracked||r.auditTracked};
+  }
+  return {hasDateCol:sets.some(s=>s.hasDateCol),hasDispositionHistory:sets.some(s=>s.hasDispositionHistory),recs:out};}
+// Turn a tab into row objects, finding the header row even when title rows sit above it.
+function rowsOf(ws){
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
+  let h=aoa.findIndex((r,i)=>i<15&&r.some(c=>/disposition|student name|mobile|contact/i.test(String(c))));
+  if(h<0)h=0;
+  const head=(aoa[h]||[]).map((c,i)=>String(c).trim()||`col${i}`);
+  return aoa.slice(h+1).map(r=>Object.fromEntries(head.map((k,i)=>[k,r[i]??""])));}
+// Read every college tab and the master tab; use whichever has more dispositions filled in.
+function readWorkbook(buf,sourceName="",inputType="array"){
+  const wb=XLSX.read(buf,{type:inputType,cellDates:true});
+  const historySheet=wb.SheetNames.find(n=>/^disposition history$/i.test(n.trim()));
+  const historyByKey=new Map();
+  if(historySheet){
+    for(const row of rowsOf(wb.Sheets[historySheet])){
+      const name=String(pick(row,/student[_\s]*name|full[_\s]*name|^name$/i)??"").trim();
+      const phone=String(pick(row,/mobile|phone|contact/i)??"").trim();
+      const key=keyOf(name,phone),timestamp=String(pick(row,/changed[_\s]*at|change[_\s]*time|timestamp/i)??"").trim();
+      if(!key||!timestamp)continue;
+      const editType=String(pick(row,/edit[_\s]*type|event[_\s]*type/i)??"").trim().toUpperCase();
+      const newValue=pick(row,/new[_\s]*disposition/i),oldValue=pick(row,/old[_\s]*disposition/i);
+      const previousData=/^(true|yes|1)$/i.test(String(pick(row,/previous[_\s]*data/i)??"").trim());
+      const item=historyByKey.get(key)||{events:[],addedDate:null};
+      if(editType==="LEAD_ADDED")item.addedDate=parseDate(timestamp)||item.addedDate;
+      if((!editType||editType==="DISPOSITION")&&normDisp(newValue)!==NONE){
+        item.events.push({date:parseDate(timestamp),timestamp,disp:normDisp(newValue),oldDisp:normDisp(oldValue),
+          remark:"",previousData,type:"DISPOSITION"});
+      }
+      historyByKey.set(key,item);
+    }
+  }
+  const toRecs=(rows,listOf)=>rows.map(r=>({
+      list:String(listOf(r)||sourceName||"Unknown").trim(),
+      real:pick(r,/name|class|education|mobile|phone/i),
+      key:keyOf(pick(r,/student[_\s]*name|full[_\s]*name|^name$/i),pick(r,/mobile|phone|contact/i)),
+      disp:normDisp(r[dispositionField(r)]),
+      remark:scrub(pick(r,/remark|comment|note/i)),
+      name:String(pick(r,/student[_\s]*name|full[_\s]*name|^name$/i)??"").trim(),
+      phone:String(pick(r,/mobile|phone|contact/i)??"").trim(),
+      cls:String(pick(r,/education|class/i)??"").trim(),
+      counselor:String(pick(r,/counsel|caller|called by|agent|executive|assigned/i)??"").trim().replace(/\s+/g," "),
+      date:parseDate(r[callDateField(r)]),
+      leadDate:parseDate(r[leadCreatedField(r)]),
+      hasDateCol:!!callDateField(r)
+    })).filter(r=>Object.entries(r).some(([k,v])=>
+      /student[_\s]*name|full[_\s]*name|^name$|education|class|mobile|phone|contact|email/i.test(k)&&String(v??"").trim()));
+  const clean=s=>String(s||"Unknown").replace(/^Sheet\s*\d+\s*-\s*/i,"").trim();
+  const master=wb.SheetNames.find(n=>/all student/i.test(n));
+  const listFromRow=(r,fallback)=>pick(r,/source\s*sheet|source|list|campaign|adset/i)||fallback;
+  const masterRecs=master?toRecs(rowsOf(wb.Sheets[master]),r=>clean(listFromRow(r,sourceName))):[];
+  const tabRecs=wb.SheetNames.filter(n=>n!==master&&!/^disposition (history|state)$/i.test(n.trim()))
+    .flatMap(n=>toRecs(rowsOf(wb.Sheets[n]),r=>clean(listFromRow(r,n))));
+  const filled=a=>a.filter(r=>r.disp!==NONE).length;
+  const recs=(tabRecs.length&&filled(tabRecs)>filled(masterRecs))||!masterRecs.length?tabRecs:masterRecs;
+  if(!recs.length)throw new Error("No student rows found. Check that the file is the outreach sheet.");
+  const hasDateCol=recs.some(r=>r.hasDateCol);
+  const enriched=recs.map(r=>{
+    const audit=r.key?historyByKey.get(r.key):null;
+    return {...r,callHistory:audit?.events||[],addedDate:audit?.addedDate||null,auditTracked:!!historySheet};
+  });
+  return {hasDateCol,hasDispositionHistory:!!historySheet,recs:enriched};
+}
+
+let state=null; // the last uploaded sheets, or null before any upload
+try{const saved=JSON.parse(localStorage.getItem("mb-sheet")||"null");if(saved&&saved.recs&&saved.recs.length)state=saved;}catch(e){}
+let previousRecs=state?.recs||[];
+let sheetUrls=DEFAULT_URLS;
+try{const saved=JSON.parse(localStorage.getItem("mb-sheet-urls")||"null");if(Array.isArray(saved))sheetUrls=saved;}catch(e){}
+$("sheetUrls").value=sheetUrls.join("\n");
+let dashboardProxyUrl=DASHBOARD_PROXY_URL;
+try{dashboardProxyUrl=localStorage.getItem("mb-proxy-url")||dashboardProxyUrl;}catch(e){}
+$("proxyUrl").value=dashboardProxyUrl;
+
+const fmtDay=d=>{const x=new Date(d+"T00:00");return x.toLocaleDateString("en-IN",{day:"numeric",month:"short"});};
+const wk=d=>new Date(d+"T00:00").toLocaleDateString("en-IN",{weekday:"short"});
+let tab="Call back";
+
+function render(){
+  const empty=!state;
+  $("dash").hidden=empty;$("snapBtn").hidden=empty;$("clearBtn").hidden=empty||!canUpload;$("confirmBox").hidden=true;
+  $("overallView").hidden=empty;
+  $("mode").classList.toggle("example",empty);
+  if(empty){$("modeText").innerHTML="<b>No sheets loaded yet.</b> Upload today's outreach sheets (one or more .xlsx files) to see the numbers.";return;}
+  const data=state;
+  const recs=data.recs, called=recs.filter(r=>r.disp!==NONE);
+  const cnt=k=>recs.filter(r=>r.disp===k).length;
+  const callEvents=recs.flatMap(r=>{
+    if(Array.isArray(r.callHistory)&&r.callHistory.length)return r.callHistory.map(event=>({...event,record:r}));
+    return r.disp!==NONE&&r.date?[{date:r.date,disp:r.disp,remark:r.remark,previousData:r.previousData,record:r}]:[];
+  });
+  const dated=callEvents.filter(event=>event.date), dayList=[...new Set(dated.map(event=>event.date))].sort();
+  const latest=dayList[dayList.length-1];
+  const today=ymd(new Date());
+  const todayCalls=dated.filter(event=>event.date===today);
+  const previousCalls=dated.filter(event=>event.date===today&&event.previousData);
+  const auditedEvents=callEvents.filter(event=>event.timestamp).sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+  const eng=r=>r.disp!==NONE&&r.disp!=="Wrong number";
+
+  $("modeText").innerHTML=`<b>${esc(state.name)}</b> · updated ${esc(state.loaded)} · ${recs.length} students, ${called.length} with a disposition${state.dupes?` · ${state.dupes} repeated students counted once`:""}`;
+  $("reportNote").textContent=`Overall performance across ${new Set(recs.map(r=>r.list)).size} sheets · ${todayCalls.length} disposition updates today · ${previousCalls.length} of today's calls were on previous data.`;
+
+  const engaged=called.filter(eng).length,interest=cnt("Interested"),enrolled=cnt("Enrolled");
+  const pct=(n,d)=>d?`${Math.round(n/d*100)}%`:"0%";
+  const tiles=[[recs.length,"Students on the lists"],[called.length,"Called leads"],[pct(called.length,recs.length),"Call coverage"],
+    [engaged,"Leads engaged"],[pct(engaged,called.length),"Engagement rate"],
+    [interest,"Interested"],[pct(interest,called.length),"Interest rate"],
+    [enrolled,"Enrolled"],[pct(enrolled,called.length),"Enrollment rate"],
+    [todayCalls.length,"Calls today"],[previousCalls.length,"Previous Data (today)"],[cnt(NONE),"Still to call"]];
+  $("tiles").innerHTML=tiles.map(([n,l])=>`<div class="tile"><span class="n">${n}</span><span class="l">${l}</span></div>`).join("");
+
+  const leg=D.map(d=>`<span><i style="background:var(${d.c})"></i>${d.k}</span>`).join("");
+  $("legend1").innerHTML=leg;
+  const note=$("dailyNote");note.hidden=true;
+  if(!dayList.length){
+    $("daily").innerHTML=`<div class="empty">${!called.length?"No calls logged yet. Daily bars appear after a Disposition change is detected or a Call Date is supplied.":"No dated calls yet."}</div>`;
+    if(called.length){note.hidden=false;note.textContent="Existing dispositions without a recorded change date are not counted as today's calls. Refresh after a Disposition changes to record the call.";}
+  }else{
+    const max=Math.max(...dayList.map(d=>dated.filter(event=>event.date===d).length));
+    $("daily").innerHTML=`<div class="days">${dayList.map(d=>{const rs=dated.filter(event=>event.date===d);
+      return `<div class="day" title="${fmtDay(d)}: ${rs.length} calls"><span class="tot">${rs.length}</span><div class="stack" style="height:${rs.length/max*150}px">${
+        D.map(x=>{const c=rs.filter(event=>event.disp===x.k).length;return c?`<span style="flex:${c};background:var(${x.c})" title="${x.k}: ${c}"></span>`:""}).join("")}</div></div>`}).join("")}</div>
+      <div class="daylabels">${dayList.map(d=>`<span>${wk(d)}<br>${fmtDay(d)}<b title="Leads engaged">${dated.filter(event=>event.date===d&&eng(event)).length} engaged</b></span>`).join("")}</div>`;
+    const undated=called.filter(r=>!r.date&&!r.callHistory?.length).length;
+    if(undated){note.hidden=false;note.textContent=`${undated} current dispositions have no detected change date yet. Refresh again after a Disposition changes to track them.`;}
+  }
+
+  const rows=[...D.map(d=>[d.k,cnt(d.k),`var(${d.c})`]),[NONE,cnt(NONE),"var(--d-none)"]];
+  const maxD=Math.max(1,...rows.map(r=>r[1]));
+  $("disps").innerHTML=rows.map(([k,c,cl])=>`<div class="row pick${k===tab?" on":""}" role="button" tabindex="0" data-k="${k}" title="Show these students"><span>${k}</span><span class="track" style="width:${Math.max(c/maxD*100,c?2:0)}%;background:${cl}"></span><span class="v">${c}</span></div>`).join("")
+    +`<p class="note">${called.length?Math.round(cnt("Interested")/called.length*100)+"% of calls so far were interested, "+Math.round(cnt("Enrolled")/called.length*100)+"% enrolled.":"Counts fill in as callers set the Disposition."}</p>`;
+
+  const lists=[...new Set(recs.map(r=>r.list))];
+  const line=(name,rs)=>{const c=k=>rs.filter(r=>r.disp===k).length,n=rs.length,cd=n-c(NONE);
+    const priorToday=previousCalls.filter(event=>event.record.list===name).length;
+    const cell=v=>`<td class="num${v?"":" zero"}">${v}</td>`;
+    return `<td>${esc(name)}</td>${cell(n)}${cell(cd)}${cell(priorToday)}${D.map(d=>cell(c(d.k))).join("")}${cell(c(NONE))}<td class="mini"><span class="track">${D.map(d=>{const v=c(d.k);return v?`<span style="width:${v/n*100}%;background:var(${d.c})"></span>`:""}).join("")}</span></td>`;};
+  $("tbl").innerHTML=lists.map(l=>`<tr>${line(l,recs.filter(r=>r.list===l))}</tr>`).join("");
+  $("tfoot").innerHTML=`<tr>${line("All sheets",recs)}</tr>`;
+
+  // Counselors: names are matched case-insensitively, so "priya" and "Priya " count together.
+  const cName=r=>r.counselor?r.counselor.replace(/\b\w/g,c=>c.toUpperCase()):"Not given";
+  const byC=new Map();for(const r of called){const k=cName(r).toLowerCase();if(!byC.has(k))byC.set(k,{n:cName(r),rs:[]});byC.get(k).rs.push(r);}
+  const anyC=called.some(r=>r.counselor);
+  $("cNote").hidden=anyC||!called.length;
+  $("cLatestH").textContent=latest?fmtDay(latest):"Latest day";
+  const cell=v=>`<td class="num${v?"":" zero"}">${v}</td>`;
+  $("ctbl").innerHTML=[...byC.values()].sort((a,b)=>b.rs.length-a.rs.length).map(({n,rs})=>`<tr><td>${esc(n)}</td>${cell(rs.length)}${cell(rs.filter(eng).length)}${cell(latest?dated.filter(event=>event.date===latest&&cName(event.record).toLowerCase()===n.toLowerCase()).length:0)}${D.map(d=>cell(rs.filter(r=>r.disp===d.k).length)).join("")}</tr>`).join("")
+    ||`<tr><td colspan="9" class="zero">No calls logged yet.</td></tr>`;
+
+  $("historyPanel").hidden=!auditedEvents.length;
+  $("historyRows").innerHTML=auditedEvents.slice(0,500).map(event=>`<tr><td>${esc(event.record.name||"—")}</td><td class="ph">${esc(event.record.phone||"—")}</td><td>${esc(event.record.list)}</td><td>${esc(event.oldDisp&&event.oldDisp!==NONE?event.oldDisp:"—")}</td><td>${esc(event.disp)}</td><td>${esc(event.timestamp)}</td><td>${event.previousData?"Yes":"No"}</td></tr>`).join("");
+
+  $("tabs").innerHTML=[...D,{k:NONE,c:"--d-none"}].map(d=>{const n=cnt(d.k);
+    return `<button type="button" role="tab" aria-selected="${d.k===tab}" data-k="${d.k}"><i style="background:var(${d.c})"></i>${d.k} (${n})</button>`}).join("");
+  const ppl=recs.filter(r=>r.disp===tab).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||a.list.localeCompare(b.list));
+  const pn=$("peopleNote");pn.hidden=true;
+  const showC=ppl.some(r=>r.name||r.phone)||!db;
+  $("peopleHead").innerHTML=(showC?"<th>Name</th><th>Contact</th>":"")+"<th>Class</th><th>Sheet</th><th>Counselor</th><th>Call date</th><th>Lead created</th><th>Remark</th>";
+  $("people").innerHTML=ppl.length?ppl.map(r=>`<tr>${showC?`<td>${esc(r.name||"—")}</td><td class="ph">${r.phone?`${esc(r.phone)}<button type="button" class="copy" data-copy="${esc(r.phone)}">Copy</button>`:"—"}</td>`:""}<td>${esc(r.cls||"—")}</td><td>${esc(r.list)}</td><td>${r.counselor?esc(cName(r)):"—"}</td><td>${r.date?fmtDay(r.date):"—"}</td><td>${r.leadDate?fmtDay(r.leadDate):"—"}</td><td class="rm">${esc(r.remark||"—")}</td></tr>`).join("")
+    :`<tr><td colspan="7" class="zero">No students marked ${tab} yet.</td></tr>`;
+}
+
+function recordDispositionChanges(recs,priorRows=previousRecs,establishBaseline=false){
+  const today=ymd(new Date()),previous=new Map(priorRows.filter(r=>r.key).map(r=>[r.key,r]));
+  const hasBaseline=priorRows.some(r=>r.key);
+  const observedAt=new Date().toISOString();
+  return recs.map(r=>{
+    const old=r.key?previous.get(r.key):null;
+    const auditTracked=!!r.auditTracked;
+    const history=auditTracked?(r.callHistory||[]).slice():(r.callHistory||old?.callHistory||[]).slice();
+    const addedDate=r.addedDate||old?.addedDate||r.leadDate
+      ||(establishBaseline?null:!old&&hasBaseline?today:null);
+    const addEvent=(date,disp,remark,previousData)=>{
+      if(date&&disp!==NONE)history.push({date,disp,remark:remark||"",previousData,observedAt});
+    };
+    const dispositionChanged=!!(old&&old.disp!==r.disp);
+    const isPreviousData=date=>r.leadDate?r.leadDate<date:old?(old.addedDate?old.addedDate<date:true):false;
+    if(!auditTracked&&r.disp!==NONE&&dispositionChanged){
+      const date=r.date||today;
+      addEvent(date,r.disp,r.remark,isPreviousData(date));
+    }else if(!auditTracked&&r.disp!==NONE&&r.date&&!history.some(event=>event.date===r.date&&event.disp===r.disp)){
+      addEvent(r.date,r.disp,r.remark,isPreviousData(r.date));
+    }else if(!auditTracked&&r.disp!==NONE&&!old&&
+      (r.leadDate===today||(!r.leadDate&&hasBaseline&&!establishBaseline))){
+      const date=r.date||today;
+      addEvent(date,r.disp,r.remark,isPreviousData(date));
+    }
+    return {...r,addedDate,callHistory:history,previousData:isPreviousData(today),auditTracked};
+  });
+}
+
+function sheetsExportUrl(value){
+  let u;
+  try{u=new URL(value.trim());}catch(e){throw new Error("Enter a valid Google Sheets URL.");}
+  const m=u.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
+  if(!m||u.hostname!=="docs.google.com")throw new Error("Only docs.google.com/spreadsheets links are supported.");
+  const out=new URL(`https://docs.google.com/spreadsheets/d/${m[1]}/export`);
+  out.searchParams.set("format","xlsx");
+  return out.toString();
+}
+
+function normalizeProxyUrl(value){
+  if(!value)return "";
+  const parsed=new URL(value);
+  if(parsed.protocol!=="https:"||!["script.google.com","script.googleusercontent.com"].includes(parsed.hostname)||
+    !/\/macros\/s\/[^/]+\/exec$/.test(parsed.pathname))
+    throw new Error("Use the HTTPS /exec URL of a deployed Google Apps Script web app.");
+  return parsed.toString();
+}
+
+async function readGoogleSheet(value,index){
+  if(dashboardProxyUrl)return readGoogleSheetViaProxy(value,index,dashboardProxyUrl);
+  let exportError;
+  try{
+    const response=await fetch(sheetsExportUrl(value),{cache:"no-store"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const type=response.headers.get("content-type")||"";
+    if(!/spreadsheet|excel|octet-stream/i.test(type))throw new Error("Google did not return an Excel workbook; check the sheet's link-sharing settings.");
+    const set=readWorkbook(await response.arrayBuffer(),`Google Sheet ${index+1}`,"array");
+    set.fetchMode="workbook";
+    return set;
+  }catch(e){exportError=e;}
+  try{
+    const set=await readGoogleSheetTab(value,index);
+    set.fetchMode="tab";
+    set.fetchWarning=`Sheet ${index+1}: the browser could not download the whole workbook (${exportError.message}). Imported the linked tab only; add a separate URL for each tab if needed.`;
+    return set;
+  }catch(e){
+    throw new Error(`Sheet ${index+1} could not be read. Workbook download: ${exportError.message}. Tab fallback: ${e.message}`);
+  }
+}
+
+function readGoogleSheetViaProxy(value,index,proxyUrl){
+  const input=new URL(value.trim()),match=input.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
+  if(!match)throw new Error("The Google Sheets URL does not contain a spreadsheet ID.");
+  const endpoint=new URL(proxyUrl),callback=`mbSheetProxy${Date.now()}${Math.random().toString(36).slice(2)}`;
+  endpoint.searchParams.set("id",match[1]);endpoint.searchParams.set("callback",callback);
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    let finished=false;
+    const cleanup=()=>{
+      if(finished)return;
+      finished=true;clearTimeout(timer);script.remove();delete window[callback];
+    };
+    const timer=setTimeout(()=>{cleanup();reject(new Error("The Apps Script connector timed out."));},30000);
+    window[callback]=response=>{
+      cleanup();
+      if(!response?.ok){reject(new Error(response?.error||"The Apps Script connector rejected this sheet."));return;}
+      try{
+        const workbook=XLSX.utils.book_new(),names=new Set();
+        (response.sheets||[]).forEach((tab,tabIndex)=>{
+          let name=String(tab.name||`Sheet ${tabIndex+1}`).slice(0,31),base=name,suffix=1;
+          while(names.has(name)){const tail=` ${suffix++}`;name=base.slice(0,31-tail.length)+tail;}
+          names.add(name);
+          XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet(tab.rows||[]),name);
+        });
+        if(!workbook.SheetNames.length)throw new Error("The connector returned no readable tabs.");
+        const data=XLSX.write(workbook,{bookType:"xlsx",type:"array"});
+        resolve({...readWorkbook(data,`Google Sheet ${index+1}`,"array"),fetchMode:"proxy"});
+      }catch(e){reject(e);}
+    };
+    script.onerror=()=>{cleanup();reject(new Error("The Apps Script connector could not be loaded. Check its deployment URL and access setting."));};
+    script.src=endpoint.toString();document.head.appendChild(script);
+  });
+}
+
+function readGoogleSheetTab(value,index){
+  const input=new URL(value.trim()),match=input.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
+  if(!match)throw new Error("The Google Sheets URL does not contain a spreadsheet ID.");
+  const hashParams=new URLSearchParams(input.hash.replace(/^#/,""));
+  const gid=input.searchParams.get("gid")||hashParams.get("gid");
+  const endpoint=new URL(`https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq`);
+  if(gid)endpoint.searchParams.set("gid",gid);
+  const callback=`mbSheetJsonp${Date.now()}${Math.random().toString(36).slice(2)}`;
+  endpoint.searchParams.set("tqx",`out:json;responseHandler:${callback}`);
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    let finished=false;
+    const cleanup=()=>{
+      if(finished)return;
+      finished=true;clearTimeout(timer);script.remove();delete window[callback];
+    };
+    const timer=setTimeout(()=>{cleanup();reject(new Error("Google Sheets' tab fallback timed out."));},15000);
+    window[callback]=response=>{
+      cleanup();
+      if(response?.status!=="ok"||!response.table){reject(new Error(response?.errors?.[0]?.detailed_message||"The linked tab is unavailable. Check that it is shared for viewing."));return;}
+      const headers=response.table.cols.map((col,i)=>String(col.label||`col${i}`).trim());
+      const csvCell=value=>`"${String(value??"").replace(/"/g,'""')}"`;
+      const lines=[headers.map(csvCell).join(",")];
+      for(const row of response.table.rows||[])
+        lines.push(headers.map((_,i)=>csvCell(row.c?.[i]?.f??row.c?.[i]?.v??"")).join(","));
+      try{resolve(readWorkbook(lines.join("\n"),`Google Sheet ${index+1} (linked tab)`,"string"));}
+      catch(e){reject(e);}
+    };
+    script.onerror=()=>{cleanup();reject(new Error("The linked tab could not be loaded. Check the sharing permission and network access to docs.google.com."));};
+    script.src=endpoint.toString();document.head.appendChild(script);
+  });
+}
+
+async function refreshGoogleSheets(){
+  const urls=$("sheetUrls").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean),err=$("err");
+  err.hidden=true;
+  if(!urls.length){err.textContent="Add at least one public Google Sheets URL before refreshing.";err.hidden=false;return;}
+  try{urls.forEach(sheetsExportUrl);dashboardProxyUrl=normalizeProxyUrl($("proxyUrl").value.trim());}
+  catch(e){err.textContent=e.message;err.hidden=false;return;}
+  sheetUrls=urls;
+  try{localStorage.setItem("mb-sheet-urls",JSON.stringify(urls));}
+  catch(e){$("sourceNote").textContent="The URL list could not be saved in this browser and will not persist after closing the page.";}
+  try{localStorage.setItem("mb-proxy-url",dashboardProxyUrl);}
+  catch(e){$("sourceNote").textContent="The connector URL could not be saved in this browser and will not persist after closing the page.";}
+  if(typeof XLSX==="undefined"){err.textContent="The spreadsheet reader did not load. Reload the page and try again.";err.hidden=false;return;}
+  const btn=$("refreshBtn");btn.disabled=true;$("modeText").innerHTML=`<b>Refreshing ${urls.length} Google Sheet${urls.length===1?"":"s"}…</b>`;
+  try{
+    const sets=await Promise.all(urls.map(readGoogleSheet));
+    const out=merge(sets),total=sets.reduce((a,s)=>a+s.recs.length,0);
+    const fetchWarnings=sets.map(s=>s.fetchWarning).filter(Boolean);
+    const sourceUrls=urls.map(sheetsExportUrl);
+    const sourceFetchModes=sets.map(s=>s.fetchMode||"upload");
+    const sameSources=Array.isArray(state?.sourceUrls)&&state.sourceUrls.length===sourceUrls.length&&
+      sourceUrls.every((url,index)=>url===state.sourceUrls[index])&&
+      Array.isArray(state?.sourceFetchModes)&&state.sourceFetchModes.length===sourceFetchModes.length&&
+      sourceFetchModes.every((mode,index)=>mode===state.sourceFetchModes[index]);
+    const establishBaseline=state?.sourceVersion!==3||!sameSources;
+    const priorRows=establishBaseline?[]:state?.sourceVersion===2?previousRecs.map(r=>({
+      ...r,
+      addedDate:r.addedDate===ymd(new Date())&&!r.leadDate?null:r.addedDate,
+      callHistory:(r.callHistory||[]).filter(event=>event.date!==ymd(new Date())||event.previousData||r.leadDate===ymd(new Date()))
+    })):previousRecs;
+    out.recs=recordDispositionChanges(out.recs,priorRows,establishBaseline);
+    const next={name:`Google Sheets (${urls.length} sources)`,dupes:total-out.recs.length,
+      loaded:new Date().toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),
+      sourceVersion:3,sourceUrls,sourceFetchModes,...out};
+    state=next;previousRecs=next.recs;render();
+    if(fetchWarnings.length){
+      const sheets=fetchWarnings.map(w=>w.match(/^Sheet \d+/)?.[0]).filter(Boolean).join(", ");
+      err.textContent=`Full-workbook downloads were blocked for ${sheets}. View-only access is sufficient, but this browser can import only each URL's linked tab without the Apps Script connector.`;
+      err.hidden=false;
+    }
+    if(db){
+      const map={};for(const r of out.recs)if(r.key&&(r.name||r.phone))map[r.key]={name:r.name,phone:r.phone};
+      $("modeText").innerHTML+=" · <b>saving for everyone…</b>";
+      await saveShared(state,map);
+    }else localStorage.setItem("mb-sheet",JSON.stringify(state));
+  }catch(e){
+    err.textContent=`Refresh failed. ${e.message||"Check that every sheet is shared as anyone with the link can view."}`;
+    err.hidden=false;
+    if(state)render();else $("modeText").innerHTML="<b>Could not refresh Google Sheets.</b> Check the links and sharing permissions.";
+  }finally{btn.disabled=false;}
+}
+
+$("uploadMenuBtn").addEventListener("click",()=>{
+  const options=$("uploadOptions");options.hidden=!options.hidden;
+  $("uploadMenuBtn").setAttribute("aria-expanded",String(!options.hidden));
+});
+$("urlOptionBtn").addEventListener("click",()=>{
+  $("uploadOptions").hidden=true;$("uploadMenuBtn").setAttribute("aria-expanded","false");
+  $("sheetUrls").value=sheetUrls.join("\n");$("sourcesPanel").hidden=!$("sourcesPanel").hidden;
+});
+$("saveSourcesBtn").addEventListener("click",()=>{
+  const urls=$("sheetUrls").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  try{
+    urls.forEach(sheetsExportUrl);
+    const proxy=normalizeProxyUrl($("proxyUrl").value.trim());
+    sheetUrls=urls;dashboardProxyUrl=proxy;
+    localStorage.setItem("mb-sheet-urls",JSON.stringify(urls));
+    localStorage.setItem("mb-proxy-url",proxy);
+    $("sourceNote").textContent=`Saved ${urls.length} sheet URL${urls.length===1?"":"s"}${proxy?" and the Apps Script connector":""}.`;
+  }catch(e){$("sourceNote").textContent=e.message;}
+});
+$("refreshBtn").addEventListener("click",refreshGoogleSheets);
+
+$("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){tab=b.dataset.k;render();}});
+const pickDisp=e=>{const r=e.target.closest(".row.pick");if(!r)return;tab=r.dataset.k;render();$("peopleH").scrollIntoView({behavior:"smooth",block:"start"});};
+$("disps").addEventListener("click",pickDisp);
+$("disps").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pickDisp(e);}});
+$("people").addEventListener("click",e=>{const b=e.target.closest(".copy");if(!b)return;
+  const done=()=>{b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1200);};
+  navigator.clipboard?.writeText(b.dataset.copy).then(done,()=>{const sel=getSelection(),rg=document.createRange();rg.selectNodeContents(b.parentNode.firstChild);sel.removeAllRanges();sel.addRange(rg);});});
+// Shared storage: the upload (no names or numbers) is saved for every viewer;
+// names and numbers go to the uploader's private space, which only they can read.
+const CHUNK=700;
+let db=null,me=null,canUpload=true,contacts=null,metaSeen=null;
+async function saveShared(st,contactMap){
+  const id="u"+Date.now().toString(36),recs=st.recs.map(({name,phone,...r})=>r),n=Math.ceil(recs.length/CHUNK)||1;
+  if(me){const entries=Object.entries(contactMap),cn=Math.ceil(entries.length/CHUNK)||1;
+    for(let i=0;i<cn;i++)await db.doc(`data/users/${me}/contacts-${i}`).set({upload:id,map:Object.fromEntries(entries.slice(i*CHUNK,(i+1)*CHUNK))});
+    await db.doc(`data/users/${me}/contacts-meta`).set({upload:id,chunks:cn});}
+  for(let i=0;i<n;i++)await db.doc(`tracker/rows-${i}`).set({upload:id,recs:recs.slice(i*CHUNK,(i+1)*CHUNK)});
+  const prev=await db.doc("tracker/latest").get();
+  await db.doc("tracker/latest").set({upload:id,chunks:n,name:st.name,dupes:st.dupes,loaded:st.loaded,hasDateCol:st.hasDateCol,sourceVersion:st.sourceVersion,sourceUrls:st.sourceUrls,sourceFetchModes:st.sourceFetchModes});
+  const old=prev.exists?prev.data().chunks||0:0;
+  for(let i=n;i<old;i++)await db.doc(`tracker/rows-${i}`).delete();
+}
+async function loadShared(meta){
+  const parts=await Promise.all(Array.from({length:meta.chunks},(_,i)=>db.doc(`tracker/rows-${i}`).get()));
+  if(parts.some(p=>!p.exists||p.data().upload!==meta.upload))return; // a newer upload is still being written
+  let map={};
+  if(me){try{const cm=await db.doc(`data/users/${me}/contacts-meta`).get();
+    if(cm.exists&&cm.data().upload===meta.upload){
+      const cs=await Promise.all(Array.from({length:cm.data().chunks},(_,i)=>db.doc(`data/users/${me}/contacts-${i}`).get()));
+      for(const c of cs)if(c.exists)Object.assign(map,c.data().map);}}catch(e){}}
+  contacts=Object.keys(map).length?map:null;
+  const recs=parts.flatMap(p=>p.data().recs).map(r=>contacts&&contacts[r.key]?{...r,...contacts[r.key]}:r);
+  state={name:meta.name,dupes:meta.dupes,loaded:meta.loaded,hasDateCol:meta.hasDateCol,sourceVersion:meta.sourceVersion,sourceUrls:meta.sourceUrls,sourceFetchModes:meta.sourceFetchModes,recs};
+  previousRecs=recs;
+  render();
+}
+(async()=>{
+  try{
+    db=await window.claude?.use?.("db");
+    if(!db)return; // no shared storage in this view: uploads stay in this browser
+    const user=await claude.use("user");
+    me=user?await user.id():null;
+    canUpload=user?await user.canEdit():false;
+    $("uploadMenu").hidden=!canUpload;
+    $("urlOptionBtn").hidden=!canUpload;
+    $("refreshBtn").hidden=!canUpload;
+    state=null;render();
+    $("modeText").innerHTML=canUpload?"<b>Loading the latest upload…</b>":"<b>Loading the latest numbers…</b>";
+    db.doc("tracker/latest").onSnapshot(s=>{
+      if(!s.exists){state=null;render();if(!canUpload)$("modeText").innerHTML="<b>No numbers yet.</b> The latest figures will appear here once the sales team uploads them.";return;}
+      const m=s.data();if(m.upload===metaSeen)return;metaSeen=m.upload;loadShared(m);
+    },e=>{$("err").textContent="Live updates stopped. Reload the page to see the latest numbers.";$("err").hidden=false;});
+  }catch(e){db=null;}
+})();
+
+async function clearAll(){
+  try{localStorage.removeItem("mb-sheet");}catch(e){}
+  if(db){
+    const m=await db.doc("tracker/latest").get(),n=m.exists?m.data().chunks||0:0;
+    await db.doc("tracker/latest").delete();
+    for(let i=0;i<n;i++)await db.doc(`tracker/rows-${i}`).delete();
+    if(me){const c=await db.doc(`data/users/${me}/contacts-meta`).get(),cn=c.exists?c.data().chunks||0:0;
+      await db.doc(`data/users/${me}/contacts-meta`).delete();
+      for(let i=0;i<cn;i++)await db.doc(`data/users/${me}/contacts-${i}`).delete();}
+    metaSeen=null;
+  }
+  state=null;previousRecs=[];render();$("modeText").innerHTML="<b>Data cleared.</b> Upload today's sheets to show new numbers.";
+}
+// Snapshot: an image of the numbers, charts and by-sheet table. The student list is left out.
+$("snapBtn").addEventListener("click",async()=>{
+  const btn=$("snapBtn"),err=$("err");err.hidden=true;btn.disabled=true;btn.textContent="Making snapshot…";
+  try{
+    if(typeof html2canvas==="undefined")throw new Error("The snapshot tool did not load. Reload the page and try again.");
+    const bg=getComputedStyle(document.body).backgroundColor;
+    const canvas=await html2canvas($("page"),{backgroundColor:bg,scale:2,windowWidth:1100,
+      ignoreElements:el=>el.id==="mode"||el.id==="studentsSec"||el.tagName==="FOOTER",
+      onclone:doc=>{const sub=doc.querySelector(".sub");if(sub&&state)sub.textContent="Snapshot of data uploaded "+state.loaded+" · "+state.recs.length+" students";
+        const pg=doc.getElementById("page");if(pg)pg.style.width="1100px";}});
+    const blob=await new Promise(r=>canvas.toBlob(r,"image/png"));
+    const day=new Date().toISOString().slice(0,10),filename=`MitsuBridge-daily-tracker-${day}.png`;
+    showSnap(canvas.toDataURL("image/png"),filename);
+    const dl=await Promise.race([window.claude?.use?.("downloads"),new Promise(r=>setTimeout(()=>r(null),3000))]).catch(()=>null);
+    if(dl)dl.save({filename,data:blob}).catch(()=>{});
+  }catch(x){err.textContent="Could not make the snapshot. "+(x.message||"");err.hidden=false;}
+  btn.disabled=false;btn.textContent="Save snapshot (image)";
+});
+function showSnap(blob,filename){
+  let box=$("snapView");
+  if(!box){box=document.createElement("section");box.id="snapView";box.className="panel";$("page").insertBefore(box,$("dash"));}
+  box.innerHTML='<h2>Today\'s snapshot</h2><p class="note">To save it: on a phone, press and hold the image, then choose Save image or Share. On a computer, right-click it and choose Save image as. You can also take a screenshot of it.</p>';
+  const img=new Image();img.src=blob;img.alt="Dashboard snapshot";img.style.border="1px solid var(--line)";img.style.borderRadius="8px";box.appendChild(img);
+  box.scrollIntoView({behavior:"smooth",block:"start"});
+}
+$("clearBtn").addEventListener("click",()=>{$("clearBtn").hidden=true;$("confirmBox").hidden=false;});
+$("clearNo").addEventListener("click",()=>render());
+$("clearYes").addEventListener("click",async()=>{$("confirmBox").hidden=true;$("modeText").innerHTML="<b>Clearing…</b>";
+  try{await clearAll();}catch(x){$("err").textContent="Could not clear the data. Try again.";$("err").hidden=false;render();}});
+$("file").addEventListener("change",async e=>{
+  $("uploadOptions").hidden=true;$("uploadMenuBtn").setAttribute("aria-expanded","false");
+  const files=[...e.target.files];if(!files.length)return;const err=$("err");err.hidden=true;
+  $("modeText").innerHTML="<b>Reading "+files.length+" file"+(files.length>1?"s":"")+"…</b>";
+  if(typeof XLSX==="undefined"){err.textContent="The spreadsheet reader did not load. Reload the page and try again.";err.hidden=false;return;}
+  const sets=[],bad=[];
+  for(const f of files){try{sets.push(readWorkbook(await f.arrayBuffer()));}catch(x){bad.push(`${f.name}: ${x.message}`);}}
+  if(bad.length){err.textContent="Could not read "+bad.join(" · ");err.hidden=false;if(!sets.length)render();}
+  if(sets.length){
+    const out=merge(sets),total=sets.reduce((a,s)=>a+s.recs.length,0);
+    out.recs=recordDispositionChanges(out.recs);
+    const ok=files.filter(f=>!bad.some(b=>b.startsWith(f.name+":"))).map(f=>f.name);
+    const name=ok.length===1?`Sheet: ${ok[0]}`:`${ok.length} files combined: ${ok.join(", ")}`;
+    state={name,dupes:total-out.recs.length,loaded:new Date().toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),sourceVersion:2,...out};
+    previousRecs=state.recs;
+    render();
+    if(db){
+      const map={};for(const r of out.recs)if(r.key&&(r.name||r.phone))map[r.key]={name:r.name,phone:r.phone};
+      $("modeText").innerHTML+=" · <b>saving for everyone…</b>";
+      try{await saveShared(state,map);}catch(x){
+        err.textContent=x&&x.code==="quota_exceeded"?"Could not save: the page's storage is full. Tell Claude in the project thread.":"Could not save this upload for other viewers. Try uploading again.";err.hidden=false;}
+    }else{try{localStorage.setItem("mb-sheet",JSON.stringify(state))}catch(e){}}
+  }
+  e.target.value="";
+});
+render();
+</script>
+
+</body></html>
