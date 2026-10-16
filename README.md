@@ -13,7 +13,7 @@ Every push to the connected branch will trigger a new deployment.
 
 ## Google Sheets refresh
 
-In the dashboard, choose **Upload sheets → Add Google Sheet URL** to configure one or more spreadsheet URLs. Those URLs and the optional connector URL are saved in that browser only; Vercel does not receive them as build-time settings.
+In the dashboard, choose **Upload sheets > Add Google Sheet URL** to configure one or more spreadsheet URLs. Those URLs and the optional connector URL are saved in that browser only; Vercel does not receive them as build-time settings.
 
 If the browser cannot download complete workbooks, deploy `MitsuBridge Sheets Bridge.gs` as a Google Apps Script web app:
 
